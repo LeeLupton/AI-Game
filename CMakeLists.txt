@@ -33,7 +33,8 @@ endif()
 add_executable(Blockforge
     src/Core/Error.cpp
     src/Core/Log.cpp
-    src/main.cpp
+
+add_executable(Blockforge
 )
 
 target_include_directories(Blockforge PRIVATE include)

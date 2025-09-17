@@ -2,6 +2,7 @@
 
 This document centralizes human-readable diagnostics. Every subsystem should emit errors using the canonical format. Use
 `bf::formatError` from `Blockforge/Core/Error.h` to guarantee consistency when logging or surfacing errors to users.
+This document centralizes human-readable diagnostics. Every subsystem should emit errors using the canonical format:
 
 ```
 Category | Code | Human message | Context
