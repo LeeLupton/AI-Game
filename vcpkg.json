@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "blockforge",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "spdlog",
+    "fmt",
+    "glm",
+    "stb",
+    "entt",
+    "fastnoise2",
+    "cgltf",
+    "tracy",
+    "rxcpp",
+    "catch2",
+    "sdl2"
+  ],
+  "builtin-baseline": "1f3fc28f5fbbd18da1cf3c710baeee66475d27be"
+}
