@@ -1,14 +1,15 @@
 #include "Blockforge/Core/Error.h"
 #include "Blockforge/Core/Log.h"
-
 #include <SDL.h>
 #include <spdlog/spdlog.h>
-
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
 #include <memory>
 #include <string_view>
+#include <chrono>
+#include <cstdlib>
+#include <memory>
 
 namespace {
 
@@ -152,6 +153,41 @@ int main(int /*argc*/, char** /*argv*/)
     bf::log::initialize(spdlog::level::info);
     spdlog::info("Blockforge prototype bootstrap running.");
 
+bool pumpEvents()
+{
+    SDL_Event event;
+    while (SDL_PollEvent(&event) != 0) {
+        switch (event.type) {
+        case SDL_QUIT:
+            spdlog::info("Received SDL_QUIT event. Terminating bootstrap loop.");
+            return false;
+        case SDL_WINDOWEVENT:
+            if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                spdlog::info(
+                    "Window resized to {}x{}",
+                    event.window.data1,
+                    event.window.data2);
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    return true;
+}
+
+}  // namespace
+
+int main(int /*argc*/, char** /*argv*/)
+{
+    bf::log::initialize(spdlog::level::info);
+    spdlog::info("Blockforge prototype bootstrap running.");
+
+    if (SDL_getenv("SDL_VIDEODRIVER") == nullptr) {
+        SDL_setenv("SDL_VIDEODRIVER", "dummy", 0);
+    }
+
     SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");
     SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1");
 
@@ -186,12 +222,15 @@ int main(int /*argc*/, char** /*argv*/)
 
     const WindowMetrics initialMetrics = queryWindowMetrics(window.get());
     logWindowMetrics(initialMetrics, "Window created");
+=======
+    spdlog::info("Window created at {}x{} (high DPI allowed).", kDefaultWindowWidth, kDefaultWindowHeight);
 
     const auto startTime = std::chrono::steady_clock::now();
     const auto endTime = startTime + kBootstrapRunTime;
 
     while (std::chrono::steady_clock::now() < endTime) {
         if (!pumpEvents(window.get())) {
+        if (!pumpEvents()) {
             break;
         }
         SDL_Delay(16);
