@@ -10,6 +10,8 @@ This repository follows a pragmatic, performance-focused style:
   * Constants and macros: `SCREAMING_SNAKE_CASE`.
 * **Headers**: Keep headers self-contained. Use forward declarations to minimize includes.
 * **Ownership**: Favor smart pointers. Document lifetimes for raw pointers explicitly.
+* **Logging**: Initialize logging through `bf::log::initialize` and use `spdlog` macros via subsystem-specific loggers
+  (`[DX12]`, `[WORLD]`, etc.).
 * **Logging**: Use `spdlog` via subsystem-specific loggers (`[DX12]`, `[WORLD]`, etc.).
 * **Threading**: Clearly annotate thread affinity and synchronization primitives.
 * **Testing**: Every subsystem exposes a diagnostic self-test runnable via Catch2.

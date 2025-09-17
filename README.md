@@ -26,3 +26,8 @@ tools/                 # PowerShell helpers for build/run/shader compilation
 ```
 
 Refer to `docs/STYLE.md` and `docs/ERRORS.md` for engineering guidelines and diagnostics.
+
+## Logging & Diagnostics
+
+Initialize logging via `bf::log::initialize()` early in application startup. Use the helpers in `Blockforge/Core/Error.h` to
+produce canonical error strings before routing them through `spdlog`.

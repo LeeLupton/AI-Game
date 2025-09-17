@@ -18,10 +18,13 @@
   * [x] Continuous integration: GitHub Actions (build + unit tests), artifact upload.
   * [x] Coding standards: `.editorconfig`, ClangFormat, Clang-Tidy config.
   * [x] Decide API: **DirectX 12** (primary) with optional abstraction layer for future Vulkan.
+  * [x] Logging & errors: **spdlog** + `fmt`; centralized `Error.h/.cpp` helpers.
+  * [x] Standard error shape: `Category | Code | Human message | Context`.
+  * [x] Use `HRESULT` translators (Windows `FormatMessage`) for DX failures.
   * [ ] Logging & errors: **spdlog** + `fmt`; centralized `Error.h/.cpp` helpers.
 
-    * [ ] Standard error shape: `Category | Code | Human message | Context`.
-    * [ ] Use `HRESULT` translators (Windows `FormatMessage`) for DX failures.
+  * [ ] Standard error shape: `Category | Code | Human message | Context`.
+  * [ ] Use `HRESULT` translators (Windows `FormatMessage`) for DX failures.
 * **Dependencies (via vcpkg)**
 
   * [ ] `spdlog`, `fmt`, `glm`, `stb`, `entt` (ECS), `fastnoise2`, `cgltf` (optional), `tracy` (profiler), `rxcpp` (optional), `catch2` (tests).
@@ -43,7 +46,7 @@
 
   * [ ] Device/adapter selection, debug layer on in `Debug`, GPU validation toggle.
 
-    * → on failure: `"DX12: CreateDevice failed (0x%08X): %s"`
+  * → on failure: `"DX12: CreateDevice failed (0x%08X): %s"`
   * [ ] Command queues, swapchain, descriptor heaps, fence sync, frame graph.
   * [ ] Shader toolchain: HLSL (`dxc`) + reflection; hot-reload in dev builds.
   * [ ] **Texture atlas** loader (PNG via `stb_image`) with exact **MC Java UV layout**.
@@ -129,7 +132,7 @@
 
 ## ✅ Done (Move cards here when complete)
 
-* *Empty*
+* Logging & errors foundation → Completed in this PR.
 
 ---
 
