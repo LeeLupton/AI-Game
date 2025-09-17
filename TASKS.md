@@ -30,8 +30,10 @@
   * [ ] `spdlog`, `fmt`, `glm`, `stb`, `entt` (ECS), `fastnoise2`, `cgltf` (optional), `tracy` (profiler), `rxcpp` (optional), `catch2` (tests).
 * **Windows Platform Layer**
 
-  * [ ] Windowing & input via **SDL2** or **GLFW** (choose one; SDL2 recommended for controller support).
-  * [ ] High-DPI support, resize events, correct swapchain handling.
+  * [x] Windowing & input via **SDL2** or **GLFW** (choose one; SDL2 recommended for controller support).
+    * → Completed in commit ba54786 (SDL2 bootstrap window & event pump).
+  * [x] High-DPI support, resize events, correct swapchain handling.
+    * → Completed in commit 4caefb6 (High DPI metrics logging & swapchain recreation hooks).
   * [ ] Gamepad + keyboard/mouse input mapping (Minecraft-like binds).
 * **Build/Run UX**
 
