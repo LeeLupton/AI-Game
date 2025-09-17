@@ -31,7 +31,9 @@
 * **Windows Platform Layer**
 
   * [x] Windowing & input via **SDL2** or **GLFW** (choose one; SDL2 recommended for controller support).
-    * → Completed in commit ba54786 (SDL2 bootstrap window & event pump).
+   * → Completed in commit ba54786 (SDL2 bootstrap window & event pump).
+  * [x] High-DPI support, resize events, correct swapchain handling.
+   * → Completed in commit 4caefb6 (High DPI metrics logging & swapchain recreation hooks).
   * [ ] High-DPI support, resize events, correct swapchain handling.
   * [ ] Gamepad + keyboard/mouse input mapping (Minecraft-like binds).
 * **Build/Run UX**
