@@ -1,0 +1,30 @@
+name: Windows Build
+
+on:
+  push:
+    branches: [ main, work ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      VCPKG_ROOT: ${{ runner.temp }}/vcpkg
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup vcpkg
+        uses: microsoft/vcpkg-action@v1
+        with:
+          manifest-dir: .
+          vcpkg-triplet: x64-windows
+      - name: Configure
+        run: cmake --preset windows-debug
+      - name: Build
+        run: cmake --build --preset windows-debug --config Debug
+      - name: Run tests
+        run: ctest --preset windows-debug --output-on-failure
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: blockforge-debug
+          path: out/build/windows-debug/Debug

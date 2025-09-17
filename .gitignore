@@ -1,0 +1,15 @@
+# Build output
+/build/
+/out/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+*.cmake
+
+# VS Code and IDE
+.vscode/
+.idea/
+
+# Windows
+Thumbs.db

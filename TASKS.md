@@ -13,11 +13,11 @@
 
 * **Project Skeleton & Toolchain**
 
-  * [ ] Initialize repo with `CMake` presets (`Debug`, `RelWithDebInfo`), MSVC v143, C++23.
-  * [ ] Integrate **vcpkg** manifest (`vcpkg.json`) for dependencies.
-  * [ ] Continuous integration: GitHub Actions (build + unit tests), artifact upload.
-  * [ ] Coding standards: `.editorconfig`, ClangFormat, Clang-Tidy config.
-  * [ ] Decide API: **DirectX 12** (primary) with optional abstraction layer for future Vulkan.
+  * [x] Initialize repo with `CMake` presets (`Debug`, `RelWithDebInfo`), MSVC v143, C++23.
+  * [x] Integrate **vcpkg** manifest (`vcpkg.json`) for dependencies.
+  * [x] Continuous integration: GitHub Actions (build + unit tests), artifact upload.
+  * [x] Coding standards: `.editorconfig`, ClangFormat, Clang-Tidy config.
+  * [x] Decide API: **DirectX 12** (primary) with optional abstraction layer for future Vulkan.
   * [ ] Logging & errors: **spdlog** + `fmt`; centralized `Error.h/.cpp` helpers.
 
     * [ ] Standard error shape: `Category | Code | Human message | Context`.
