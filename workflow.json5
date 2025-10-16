@@ -1,0 +1,226 @@
+// workflow.json5
+{
+  meta: {
+    name: 'prod-multimodel-orchestrator',
+    version: '2025.10.16',
+    owners: ['lee@lupton.consulting'],
+    // Rollout flags (can be merged/overridden per env)
+    featureFlags: { streaming: true, jsonMode: true, toolAudit: true, },
+  },
+
+  // Central model registry for reuse
+  models: {
+    primary_llm: { provider: 'openai', model: 'gpt-4.1',  maxTokens: 4096, temperature: 0.2, topP: 0.95, },
+    fast_llm:    { provider: 'openai', model: 'gpt-4o-mini', maxTokens: 2048, temperature: 0.4, },
+    reasoner:    { provider: 'openai', model: 'o3-mini',    objective: 'reasoning', temperature: 0.0, },
+    vision:      { provider: 'openai', model: 'gpt-4o',     modalities: ['vision','text'], },
+    speech2text: { provider: 'openai', model: 'whisper-1',  task: 'transcribe', },
+    image_gen:   { provider: 'openai', model: 'dall-e-3',   size: '1024x1024', },
+  },
+
+  // Tool catalog (called via function/tool calling)
+  tools: {
+    webSearch: { type: 'http', endpoint: 'https://api.search.local/q', method: 'GET', auth: 'service-account', },
+    vectorDB:  { type: 'embedding-retrieval', index: 'prod-knowledge', topK: 8, },
+    codeExec:  { type: 'sandbox', runtime: 'py310', timeoutMs: 120000, network: false, },
+    threatScan:{ type: 'classifier', modelRef: 'reasoner', policy: 'security/v1', },
+  },
+
+  // DAG-style workflow: nodes + edges + conditions
+  graph: {
+    entry: 'ingress',
+
+    nodes: {
+      ingress: {
+        kind: 'router',
+        routes: [
+          { when: { mime: 'audio/*' },              to: 'stt' },
+          { when: { hasImage: true },               to: 'vision_route' },
+          { when: { tokensLt: 1200, lang: 'en' },   to: 'fast_answer' },
+          { when: { default: true },                to: 'plan' },
+        ],
+      },
+
+      stt: {
+        kind: 'inference',
+        modelRef: 'speech2text',
+        input: { audio: '${request.audio}' },
+        out: { text: '${result.text}', },
+        next: 'plan',
+      },
+
+      vision_route: {
+        kind: 'inference',
+        modelRef: 'vision',
+        input: {
+          prompt: `Describe the image, extract entities, and \
+classify sensitive content. Return JSON schema-compliant output.`,
+          images: '${request.images}',
+        },
+        out: { visionSummary: '${result.text}', },
+        next: 'plan',
+      },
+
+      plan: {
+        kind: 'controller',
+        // Chain-of-thought is NOT logged; we pass a scratchpad to reasoner
+        steps: [
+          { call: 'threatScan', in: { text: '${context.allText}' }, out: { verdict: 'securityVerdict' } },
+          { if: { eq: ['${securityVerdict.block}', true] }, then: { to: 'safe_refusal' } },
+          { call: 'vectorDB', in: { query: '${context.userQuery}' }, out: { passages: 'retrieved' } },
+          { to: 'answer_llm' },
+        ],
+      },
+
+      fast_answer: {
+        kind: 'inference',
+        modelRef: 'fast_llm',
+        input: {
+          system: 'Be concise. Cite sources when provided. Avoid tools unless necessary.',
+          user: '${request.text}',
+          context: '${retrieved}', // may be empty
+        },
+        policies: { jsonMode: true, stream: true, },
+        fallback: { to: 'answer_llm' },
+        next: 'postprocess',
+      },
+
+      answer_llm: {
+        kind: 'abTest', // A/B/C weighted routing for response quality + latency
+        arms: [
+          { weight: 0.6, to: 'primary_answer' },
+          { weight: 0.3, to: 'reasoned_answer' },
+          { weight: 0.1, to: 'tool_augmented' },
+        ],
+      },
+
+      primary_answer: {
+        kind: 'inference',
+        modelRef: 'primary_llm',
+        input: {
+          system: 'You are precise, cite facts, and avoid speculation.',
+          user: '${request.text}',
+          context: '${retrieved}',
+        },
+        retry: { maxAttempts: 2, backoffMs: 800, jitter: true, },
+        timeouts: { totalMs: 20000, },
+        next: 'postprocess',
+      },
+
+      reasoned_answer: {
+        kind: 'compose',
+        steps: [
+          {
+            // private planning pass using reasoner
+            kind: 'inference',
+            modelRef: 'reasoner',
+            input: {
+              system: 'Draft a structured plan (bullets) and an answer skeleton. No final answer.',
+              user: '${request.text}',
+              context: '${retrieved}',
+            },
+            out: { plan: 'draftPlan' },
+          },
+          {
+            kind: 'inference',
+            modelRef: 'primary_llm',
+            input: {
+              system: 'Use the provided plan to craft the final answer with citations.',
+              user: '${request.text}',
+              context: '${retrieved}',
+              assistant: '${draftPlan}',
+            },
+          },
+        ],
+        next: 'postprocess',
+      },
+
+      tool_augmented: {
+        kind: 'compose',
+        steps: [
+          { call: 'webSearch', in: { q: '${request.text}', n: 5 }, out: { items: 'webResults' } },
+          { call: 'vectorDB', in: { query: '${request.text}', topK: 6 }, out: { passages: 'kb' } },
+          {
+            kind: 'inference',
+            modelRef: 'primary_llm',
+            input: {
+              system: 'Synthesize web + KB. Provide citations. If conflict, prefer KB.',
+              user: '${request.text}',
+              context: { web: '${webResults}', kb: '${kb}' },
+            },
+          },
+        ],
+        next: 'postprocess',
+      },
+
+      postprocess: {
+        kind: 'filter',
+        rules: [
+          { check: 'maxTokens', args: { limit: 1200 }, onFail: 'summarize' },
+          { check: 'piiLeak',    args: { strict: true }, onFail: 'safe_refusal' },
+        ],
+        next: 'evals',
+      },
+
+      summarize: {
+        kind: 'inference',
+        modelRef: 'fast_llm',
+        input: { system: 'Summarize to <= 1200 tokens.', assistant: '${prev.answer}' },
+        next: 'evals',
+      },
+
+      safe_refusal: {
+        kind: 'static',
+        response: 'I can’t help with that request.',
+        halt: true,
+      },
+
+      evals: {
+        kind: 'compose',
+        steps: [
+          { kind: 'inference',
+            modelRef: 'reasoner',
+            input: {
+              system: 'Score answer on relevance(0-1), factuality(0-1), safety(0-1). Output JSON.',
+              assistant: '${prev.answer}',
+              user: '${request.text}',
+            },
+            out: { metrics: 'quality' },
+          },
+        ],
+        // Telemetry sink—non-blocking
+        emit: { topic: 'metrics.answers', data: '${quality}', },
+        next: 'egress',
+      },
+
+      egress: { kind: 'return' },
+    },
+  },
+
+  // Caching/Idempotency policies
+  cache: {
+    // Cache retrieval and planning for 5 minutes; model outputs are not cached in prod
+    keys: ['request.text', 'retrieved.hash'],
+    ttlSeconds: 300,
+    include: ['vectorDB', 'plan'],
+    exclude: ['primary_answer','reasoned_answer','tool_augmented'],
+  },
+
+  // Environment-specific overrides (merge-on-read)
+  environments: {
+    production: {
+      models: { primary_llm: { temperature: 0.15, }, },
+      tools:  { codeExec: { timeoutMs: 60000, }, },
+    },
+    staging: {
+      featureFlags: { toolAudit: false, },
+      abShadow: { enabled: true, sample: 0.1, }, // shadow evals on 10% traffic
+    },
+  },
+
+  // Long strings with line continuation (JSON5):
+  docs: {
+    policy: "All tool calls are logged with inputs/outputs (PII redactions applied). \
+Operators can replay non-deterministic steps using stored seeds.",
+  },
+}
